@@ -1,0 +1,265 @@
+body, input, textarea, select, button {
+    font-family: 'Inter', sans-serif !important;
+}
+body {
+    margin: 0;
+    padding: 20px;
+    background-color: #121212;
+   /* Dark background color */
+    color: #ccc;
+   /* Dimmed text color */
+}
+h1, label {
+    color: #ccc;
+   /* Dimmed text color */
+}
+h1 {
+    text-align: center;
+    margin-bottom: 20px;
+}
+label, .input-group {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
+    color: #ccc;
+   /* Dimmed text color */
+}
+select, input[type="file"], button {
+    width: 100%;
+    padding: 10px;
+    border: none;
+    border-radius: 4px;
+    background-color: #333;
+   /* Dark background color */
+    color: #ccc;
+   /* Dimmed text color */
+    font-size: 14px;
+    margin-bottom: 10px;
+    box-sizing: border-box;
+    transition: border-color 0.3s ease, background-color 0.3s ease;
+}
+input[type="file"]::-webkit-file-upload-button {
+    font-family: 'Inter', sans-serif !important;
+    color: #ccc;
+    background-color: #212121;
+    border: 0;
+    box-shadow: none;
+    border-radius: 2px;
+    padding: 6px 8px 6px 8px;
+    margin-right: 10px;
+}
+input[type="file"]::-webkit-file-upload-button:hover {
+    background-color: #272727;
+}
+.mdl-layout {
+    max-width: 400px;
+    margin: 0 auto;
+    background-color: #212121;
+   /* Darker background color */
+    padding: 20px;
+    border-radius: 4px;
+    box-shadow: 0 2px 4px rgba(255, 255, 255, 0.1);
+   /* Light shadow color */
+    z-index: 2;
+}
+.mdl-layout-title {
+    text-align: center;
+    color: #ccc;
+   /* Dimmed text color */
+    margin-bottom: 20px;
+}
+.result-section p {
+    font-weight: bold;
+    font-size: 23px;
+    color: #ccc;
+   /* Dimmed text color */
+}
+.calculate-button {
+    background-color: #f60109 !important;
+    color: #fff !important;
+    font-weight: bold !important;
+    cursor: pointer !important;
+    font-size: 15px !important;
+    transition: background-color 0.3s ease !important;
+}
+.calculate-button:hover {
+    background-color: #c30007 !important;
+}
+button {
+    font-weight: bold !important;
+}
+.credits {
+    background-color: #333;
+   /* Dark background color */
+    border: 1px solid #ddd;
+    padding: 10px;
+    margin-top: 20px;
+    position: relative;
+    z-index: 1;
+}
+.credits p {
+    margin: 0;
+    color: #ccc;
+   /* Dimmed text color */
+    font-size: 15px;
+    font-weight: bold;
+    text-align: center;
+}
+.credits:hover {
+    background-color: #222;
+   /* Slightly darker background color on hover */
+}
+button:hover {
+    background-color: #3a3a3a;
+   /* Slightly darker background color on hover */
+}
+.scale-selector {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+.scale-selector label {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+}
+.scale-selector input {
+    display: none;
+}
+.scale-selector .circle {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    border: 2px solid #757575;
+    margin-right: 5px;
+    position: relative;
+    transition: background-color 0.3s;
+}
+.scale-selector input:checked+.circle {
+    background-color: #f60109 !important;
+    border-color: #f60109 !important;
+}
+#scaleFactorDisplay {
+    display: none;
+}
+.progress-bar {
+    background-color: #444 !important;
+   /* Darker background color */
+    border-radius: 4px;
+    height: 15px;
+    overflow: hidden;
+}
+.progress-bar-inner {
+    background-color: #f60109 !important;
+    height: 100%;
+    width: 0;
+}
+#settings-window {
+    display: none;
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 300px;
+    height: 500px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.102);
+    overflow: auto;
+    border-radius: 4px;
+    padding: 1em;
+    margin: 0px;
+    background-color: #212121;
+   /* Dark background color */
+    color: #ccc;
+   /* Light text color */
+    z-index: 3;
+}
+#settings-window h2 {
+    text-align: center;
+    margin-bottom: 20px;
+    color: #ccc;
+   /* Light text color */
+}
+#overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 2;
+}
+.settings-button {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background-color: #333;
+   /* Dark background color */
+    color: #ccc;
+   /* Light text color */
+    border: none;
+    border-radius: 50%;
+    width: 20px;
+    height: 20px;
+    cursor: pointer;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 0;
+    transition: background-color 0.3s ease, color 0.3s ease;
+   /* Transition for smoother effects */
+}
+.settings-button:hover {
+    background-color: #444;
+   /* Slightly darker background color on hover */
+}
+.result-section {
+    margin-top: 20px;
+    text-align: center;
+}
+.result-section h2 {
+    margin-bottom: 10px;
+    color: #ccc;
+}
+#log-window {
+    background-color: #212121 !important;
+    display: none;
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    width: 23%;
+    height: 50%;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.102);
+    overflow: auto;
+    border-radius: 4px;
+    padding: 1em;
+}
+.mdl-layout-title .beta {
+    color: #f60109;
+}
+/* Define the scrollbar styles */
+::-webkit-scrollbar {
+    width: 12px; /* Width of the scrollbar */
+}
+
+/* Track */
+::-webkit-scrollbar-track {
+    background-color: #333; /* Color of the scrollbar track */
+    border-radius: 4px; /* Rounded corners on the handle */
+}
+
+/* Handle */
+::-webkit-scrollbar-thumb {
+    background-color: #666; /* Color of the scrollbar handle */
+    border-radius: 5px; /* Rounded corners on the handle */
+}
+
+/* Handle on hover */
+::-webkit-scrollbar-thumb:hover {
+    background-color: #888; /* Color of the scrollbar handle on hover */
+}
+
+/* Optional: Handle when active */
+::-webkit-scrollbar-thumb:active {
+    background-color: #555; /* Color of the scrollbar handle when active (clicked) */
+}

@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script type="module" src="pdf.mjs">
+  </script>
+  <script type="module">
+    import * as pdfjsLib from './pdf.mjs';
+    pdfjsLib.GlobalWorkerOptions.workerSrc = new URL('./pdf.worker.mjs', import.meta.url);
+  </script>
+  <title> PDF Linear Meters Calculator </title>
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" type="text/css" href="styles-dark.css" id="theme-stylesheet">
+</head>
+
+<body>
+  <div class="mdl-layout">
+    <h1 class="mdl-layout-title"> PDF Linear Meters Calculator <b class="beta">BETA</b>
+    </h1>
+    <div class="input-group">
+      <label for="fileInput"> Choose an option: </label>
+      <select id="fileInputOption">
+        <option value="files" selected> Select PDF file(s) </option>
+        <option value="folder-of-files"> Select a folder of PDF file(s) </option>
+      </select>
+    </div>
+    <input type="file" id="fileInput" class="mdl-textfield__input" accept=".pdf" multiple /> <button id="calculateButton" class="calculate-button" onclick="calculateLinearMeters()"> CALCULATE </button>
+    <button id="advanced-report" onclick="toggleLogWindow()"> ADVANCED REPORT </button>
+    <button type="button" id="settings-button" onclick="toggleSettings()"> SETTINGS </button>
+    <div id="overlay" style="display: none;"> </div>
+    <div id="settings-window" style="display: none;">
+      <button type="button" onclick="toggleSettings()" class="settings-button"> X </button>
+      <h2 style="margin-bottom: 20px;"> SETTINGS </h2> <label for="thememodeDropdown" style="margin-bottom: 10px;"> Theme Mode: </label> <select id="thememodeDropdown" style="width: 100%; margin-bottom: 10px;">
+        <option value="light"> Light </option>
+        <option value="dark"> Dark </option>
+      </select>
+      <button type="button" id="reset-to-defaults-button" onclick="resetToDefaults()" style="width: 100%; margin-top: 10px;"> Reset to Defaults </button>
+    </div>
+    <div class="result-section">
+      <h2>Total PDF Metrics:</h2>
+      <p id="result">
+      </p>
+    </div>
+    <br>
+    <div class="progress-bar">
+      <div class="progress-bar-inner" id="progressBar"> </div>
+    </div>
+    <div class="credits">
+      <p> Made with ❤️ by Martin Kirekchiev </p>
+      <hr>
+      <p> Last Updated: 08 Febryary 2024 <br> PDF.js Version: 4.0.379 </p>
+    </div>
+    <div id="log-window">
+      <div id="logContent"> </div>
+    </div>
+    <script>
+      const isPixelBlackAndWhite = (r, g, b) => {
+        const tolerance = 10;
+        const maxDifference = Math.max(Math.abs(r - g), Math.abs(g - b), Math.abs(b - r));
+        return maxDifference <= tolerance;
+      };
+      const isPageBlackAndWhite = async (page) => {
+        const canvas = document.createElement('canvas');
+        const context = canvas.getContext('2d');
+        const viewport = page.getViewport({
+          scale: 1
+        });
+        canvas.width = viewport.width;
+        canvas.height = viewport.height;
+        const renderContext = {
+          canvasContext: context,
+          viewport: viewport,
+        };
+        await page.render(renderContext).promise;
+        const imageData = context.getImageData(0, 0, canvas.width, canvas.height).data;
+        let isBlackAndWhite = true;
+        for (let i = 0; i < imageData.length; i += 16) {
+          const r = imageData[i];
+          const g = imageData[i + 1];
+          const b = imageData[i + 2];
+          if (!isPixelBlackAndWhite(r, g, b)) {
+            isBlackAndWhite = false;
+            break;
+          }
+        }
+        return isBlackAndWhite;
+        imageData = null;
+      };
+    </script>
+    <script>
+      // Add an event listener for the option change
+      const fileInputOption = document.getElementById('fileInputOption');
+      const fileInput = document.getElementById('fileInput');
+      const progressBar = document.getElementById('progressBar');
+      const resultDiv = document.getElementById('result');
+      const logWindow = document.getElementById('log-window');
+      fileInputOption.addEventListener('change', handleFileInputOptionChange);
+      fileInput.addEventListener('change', handleFileInputChange);
+      // Initial setup
+      handleFileInputOptionChange();
+
+      function handleFileInputOptionChange() {
+        const selectedOption = fileInputOption.value;
+        const previousOption = fileInputOption.dataset.previousOption || 'files';
+        if (selectedOption !== previousOption) {
+          // Trigger actions when changing from "files" to "folder-of-files" or vice versa
+          progressBar.style.width = '0%';
+          ResetMetrics();
+          resultDiv.textContent = '—';
+          logWindow.style.display = 'none';
+        }
+        // Update the previous option for the next change
+        fileInputOption.dataset.previousOption = selectedOption;
+        if (selectedOption === 'folder-of-files') {
+          // Set webkitdirectory attribute for folder selection
+          fileInput.setAttribute('webkitdirectory', '');
+        } else {
+          // Remove webkitdirectory attribute for individual file selection
+          fileInput.removeAttribute('webkitdirectory');
+        }
+      }
+
+      function handleFileInputChange() {
+        // Your existing logic for file input change
+        progressBar.style.width = '0%';
+        ResetMetrics();
+        resultDiv.textContent = '—';
+        logWindow.style.display = 'none';
+      }
+    </script>
+    <script>
+      let themeMode = 'dark';
+      const logContent = document.getElementById('logContent');
+      resultDiv.textContent = '—';
+      progressBar.style.width = '0%';
+      const toggleLogWindow = () => {
+        if (logWindow.style.display === 'none') {
+          logWindow.style.display = 'block';
+          logContent.scrollIntoView({
+            block: 'start',
+            behavior: 'instant'
+          });
+        } else {
+          logWindow.style.display = 'none';
+        }
+      };
+      const toggleSettings = () => {
+        const settingsWindow = document.getElementById('settings-window');
+        const overlay = document.getElementById('overlay');
+        if (settingsWindow.style.display === 'none') {
+          settingsWindow.style.display = 'block';
+          overlay.style.display = 'block';
+        } else {
+          settingsWindow.style.display = 'none';
+          overlay.style.display = 'none';
+        }
+      };
+      const metrics = {
+        420: 0,
+        620: 0,
+        914: 0,
+        1065: 0,
+        1520: 0,
+        A4: 0,
+        a4ColorPages: 0,
+        a4BlackAndWhitePages: 0,
+        A3: 0,
+        a3ColorPages: 0,
+        a3BlackAndWhitePages: 0,
+        wideFormatPages: 0,
+      };
+      const ResetMetrics = () => {
+        Object.keys(metrics).forEach(key => {
+          metrics[key] = 0;
+        })
+        Object.keys(totalPDFMetrics).forEach(key => {
+          totalPDFMetrics[key] = 0
+        })
+      }
+      const settingsChangeHandler = () => {
+        saveSettings();
+        applySettingsToUI();
+      };
+      window.addEventListener('load', () => {
+        loadSettings();
+        applySettingsToUI();
+      });
+      const saveSettings = () => {
+        const settings = {
+          themeMode: themeMode,
+        };
+        localStorage.setItem('linearMetersCalculatorSettings', JSON.stringify(settings));
+      };
+      const loadSettings = () => {
+        const storedSettings = localStorage.getItem('linearMetersCalculatorSettings');
+        if (storedSettings) {
+          const settings = JSON.parse(storedSettings);
+          themeMode = settings.themeMode || themeMode;
+        }
+      };
+      const applySettingsToUI = () => {
+        document.getElementById('thememodeDropdown').value = themeMode;
+        document.documentElement.setAttribute('data-theme', themeMode);
+        setTheme(themeMode);
+      };
+      const handleThemeModeChange = () => {
+        themeMode = document.getElementById('thememodeDropdown').value;
+        settingsChangeHandler();
+      };
+      document.getElementById('thememodeDropdown').addEventListener('change', handleThemeModeChange);
+
+      function setTheme(theme) {
+        const link = document.getElementById('theme-stylesheet');
+        link.href = `styles-${theme}.css`;
+      }
+      const resetToDefaults = () => {
+        themeMode = 'light';
+        saveSettings();
+        applySettingsToUI();
+      };
+      applySettingsToUI();
+
+      function updateProgressBar(percentage) {
+        const progressBar = document.getElementById('progressBar');
+        progressBar.style.transition = 'width 1.0s ease'; // Adjust the duration and easing as needed
+        progressBar.style.width = `${percentage}%`;
+        // To reset the transition after the animation is complete
+        setTimeout(() => {
+          progressBar.style.transition = '';
+        }, 500); // Adjust the timeout to match the transition duration
+      }
+      // Create a total PDF metrics object to accumulate values
+      const totalPDFMetrics = {
+        A4: 0,
+        A4ColorPages: 0,
+        A4BlackAndWhitePages: 0,
+        A3: 0,
+        A3ColorPages: 0,
+        A3BlackAndWhitePages: 0,
+        wideFormatPages: 0,
+        420: 0,
+        620: 0,
+        914: 0,
+        1065: 0,
+        1520: 0,
+      };
+      async function calculateLinearMeters() {
+        console.time('calculateLinearMeters');
+        const calculateButton = document.getElementById('calculateButton');
+        calculateButton.disabled = true;
+        logWindow.style.display = 'none';
+        logContent.textContent = '';
+        resultDiv.textContent = '—';
+        ResetMetrics();
+        const files = fileInput.files;
+        if (files.length === 0) {
+          alert('Please select at least one PDF file.');
+          logWindow.style.display = 'none';
+          progressBar.style.width = '0%';
+          calculateButton.disabled = false;
+          return;
+        }
+        const totalFiles = files.length;
+        let processedFiles = 0;
+        updateProgressBar(1);
+        for (const pdfFile of files) {
+          await processPDF(pdfFile, logContent, metrics, totalPDFMetrics);
+          processedFiles++;
+          const progressPercentage = (processedFiles / totalFiles) * 100;
+          updateProgressBar(progressPercentage);
+        }
+        logWindow.style.display = 'block';
+        // Display the total linear meters for each roll in the result element
+        const resultElement = document.getElementById('result');
+        resultElement.innerHTML = `
+        <b>420 roll&nbsp;&nbsp;&nbsp;&mdash;&nbsp;&nbsp;&nbsp;${totalPDFMetrics[420].toFixed(2)} meters</b>
+        <br>
+        <b>620 roll&nbsp;&nbsp;&nbsp;&mdash;&nbsp;&nbsp;&nbsp;${totalPDFMetrics[620].toFixed(2)} meters</b>
+        <br>
+        <b>914 roll&nbsp;&nbsp;&nbsp;&mdash;&nbsp;&nbsp;&nbsp;${totalPDFMetrics[914].toFixed(2)} meters</b>
+        <br>
+        <b>1065 roll&nbsp;&nbsp;&nbsp;&mdash;&nbsp;&nbsp;&nbsp;${totalPDFMetrics[1065].toFixed(2)} meters</b>
+        <br>
+        <b>1520 roll&nbsp;&nbsp;&nbsp;&mdash;&nbsp;&nbsp;&nbsp;${totalPDFMetrics[1520].toFixed(2)} meters</b>
+        <br>
+        <br>
+        <b>Wide Format Pages:&nbsp;&nbsp;&nbsp;${totalPDFMetrics.wideFormatPages}</b>
+        <br>—<br>
+        <b>A4 Pages:&nbsp;&nbsp;&nbsp;${totalPDFMetrics.A4}</b>
+        <br>
+        <b>A4 Color Pages:&nbsp;&nbsp;&nbsp;${totalPDFMetrics.A4ColorPages}</b>
+        <br>
+        <b>A4 BW Pages:&nbsp;&nbsp;&nbsp;${totalPDFMetrics.A4BlackAndWhitePages}</b>
+        <br>—<br>
+        <b>A3 Pages:&nbsp;&nbsp;&nbsp;${totalPDFMetrics.A3}</b>
+        <br>
+        <b>A3 Color Pages:&nbsp;&nbsp;&nbsp;${totalPDFMetrics.A3ColorPages}</b>
+        <br>
+        <b>A3 BW Pages:&nbsp;&nbsp;&nbsp;${totalPDFMetrics.A3BlackAndWhitePages}</b>
+        <br>
+    `;
+        calculateButton.disabled = false;
+        console.timeEnd('calculateLinearMeters');
+      }
+      // Separate counters for A3 and A4 for each file
+      let localA4 = 0;
+      let localA3 = 0;
+      let localA4Color = 0;
+      let localA3Color = 0;
+      let localA4BW = 0;
+      let localA3BW = 0;
+      async function processPDF(pdfFile, outputElement, metrics, totalPDFMetrics) {
+        // Check if the file is a PDF
+        if (pdfFile.type !== 'application/pdf') {
+          outputElement.innerHTML += `<br>
+    <b>${pdfFile.name}:</b>
+    <br>
+    Not processed; the file is not a PDF.
+    <br>`;
+          return;
+        }
+        try {
+          localA4 = 0;
+          localA3 = 0;
+          localA4Color = 0;
+          localA3Color = 0;
+          localA4BW = 0;
+          localA3BW = 0;
+          const result = await calculateLinearMetersFromPDF(pdfFile);
+          // Display original size of all pages
+          outputElement.innerHTML += `<b>${pdfFile.name}:</b>
+<br>`;
+          await displayOriginalSizes(pdfFile, outputElement);
+          // Display linear meters calculation result for each page
+          for (let i = 0; i < result.pages.length; i++) {
+            const pageResult = result.pages[i];
+            outputElement.innerHTML += `&nbsp;&nbsp;&nbsp;<br>&nbsp;&nbsp;&nbsp;${pageResult.linearMeters.toFixed(2)} meters (${pageResult.rollSize} roll)
+<br>`;
+            // Update total PDF metrics based on accumulated counts for A4 and A3
+            totalPDFMetrics.A4 += localA4;
+            totalPDFMetrics.A4ColorPages += localA4Color;
+            totalPDFMetrics.A4BlackAndWhitePages += localA4BW;
+            totalPDFMetrics.A3 += localA3;
+            totalPDFMetrics.A3ColorPages += localA3Color;
+            totalPDFMetrics.A3BlackAndWhitePages += localA3BW;
+            totalPDFMetrics.wideFormatPages += result.wideFormatPages;
+            totalPDFMetrics[420] += pageResult.rollSize === 420 ? pageResult.linearMeters : 0;
+            totalPDFMetrics[620] += pageResult.rollSize === 620 ? pageResult.linearMeters : 0;
+            totalPDFMetrics[914] += pageResult.rollSize === 914 ? pageResult.linearMeters : 0;
+            totalPDFMetrics[1065] += pageResult.rollSize === 1065 ? pageResult.linearMeters : 0;
+            totalPDFMetrics[1520] += pageResult.rollSize === 1520 ? pageResult.linearMeters : 0;
+          }
+          // Display summed linear meters for each roll
+          for (const rollSize in result.rollLinearMeters) {
+            outputElement.innerHTML += `&nbsp;&nbsp;&nbsp;—<br>${result.rollLinearMeters[rollSize].toFixed(2)} meters (${rollSize} roll)
+<br>`;
+          }
+          outputElement.innerHTML += `&nbsp;&nbsp;&nbsp;—<br>&nbsp;&nbsp;&nbsp;A4 – ${localA4} pages
+<br>&nbsp;&nbsp;&nbsp;A4 Color – ${localA4Color} pages<br>&nbsp;&nbsp;&nbsp;A4 BW – ${localA4BW} pages<br>&nbsp;&nbsp;&nbsp;—<br>
+&nbsp;&nbsp;&nbsp;A3 – ${localA3} pages&nbsp;&nbsp;&nbsp;<br>&nbsp;&nbsp;&nbsp;A3 Color – ${localA3Color} pages<br>&nbsp;&nbsp;&nbsp;A3 BW – ${localA3BW} pages<br>
+<br>
+<hr>
+<br>`;
+        } catch (error) {
+          console.error(`Error processing ${pdfFile.name}:`, error);
+          alert(`Error processing ${pdfFile.name}. Please check the console for details.`);
+        }
+      }
+      async function displayOriginalSizes(pdfFile, outputElement) {
+        let arrayBuffer = await pdfFile.arrayBuffer();
+        let pdfData = new Uint8Array(arrayBuffer);
+        const pdf = await pdfjsLib.getDocument({
+          data: pdfData
+        }).promise;
+        const totalPages = pdf.numPages;
+        for (let i = 1; i <= totalPages; i++) {
+          const page = await pdf.getPage(i);
+          const viewport = page.getViewport({
+            scale: 1
+          });
+          const width = viewport.width * 0.352778;
+          const height = viewport.height * 0.352778;
+          outputElement.innerHTML += `Page ${i} - Width: ${width.toFixed(2)} mm, Height: ${height.toFixed(2)} mm<br>`;
+        }
+        // Clean up resources
+        pdf.destroy();
+        arrayBuffer = null;
+        pdfData = null;
+      }
+      async function calculateLinearMetersFromPDF(pdfFile) {
+        const rolls = [{
+          size: 420,
+          price: 2.20
+        }, {
+          size: 620,
+          price: 2.80
+        }, {
+          size: 914,
+          price: 3.40
+        }, {
+          size: 1065,
+          price: 4.10
+        }, {
+          size: 1520,
+          price: 6.00
+        }];
+        const mainrolls = [{
+          size: 420,
+          price: 2.20
+        }, {
+          size: 620,
+          price: 2.80
+        }, {
+          size: 914,
+          price: 3.40
+        }];
+        const TOLERANCE = 5; // TOLERANCE IN MILLIMETERS
+        // Helper function to find the closest, smallest roll that fits with tolerance
+        function findClosestRollSize(rollsArray, sideArray) {
+          const validRolls = rollsArray.filter(roll => roll.size + TOLERANCE >= sideArray);
+          return validRolls.reduce((minRoll, roll) => (roll.size < minRoll.size ? roll : minRoll), validRolls[0]).size;
+        }
+        return new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = async function(e) {
+            let arrayBuffer = e.target.result;
+            let pdfData = new Uint8Array(arrayBuffer);
+            try {
+              const pdf = await pdfjsLib.getDocument(pdfData).promise;
+              const totalPages = pdf.numPages;
+              let totalLinearMeters = 0;
+              const rollLinearMeters = {};
+              const pagesResults = [];
+              let chosenRollSize;
+              async function processPage(pageNumber) {
+                const page = await pdf.getPage(pageNumber);
+                const viewport = page.getViewport({
+                  scale: 1
+                });
+                // Convert points to millimeters
+                const width = (viewport.width * 0.352778).toFixed(2);
+                const height = (viewport.height * 0.352778).toFixed(2);
+                let linearMeters;
+                // Check if the page is an A4 or A3
+                if ((width <= 297 + TOLERANCE && height <= 210 + TOLERANCE) || (width <= 210 + TOLERANCE && height <= 297 + TOLERANCE)) {
+                  metrics.A4++;
+                  localA4++;
+                  if (await isPageBlackAndWhite(page)) {
+                    metrics.a4BlackAndWhitePages++;
+                    localA4BW++
+                  } else {
+                    metrics.a4ColorPages++;
+                    localA4Color++
+                  }
+                  linearMeters = 0
+                  chosenRollSize = 0
+                } else if ((width <= 420 + TOLERANCE && height <= 297 + TOLERANCE) || (width <= 297 + TOLERANCE && height <= 420 + TOLERANCE)) {
+                  metrics.A3++;
+                  localA3++;
+                  if (await isPageBlackAndWhite(page)) {
+                    metrics.a3BlackAndWhitePages++;
+                    localA3BW++
+                  } else {
+                    metrics.a3ColorPages++;
+                    localA3Color++
+                  }
+                  linearMeters = 0
+                  chosenRollSize = 0
+                } else if (width <= 914 + TOLERANCE && height >= 914 + TOLERANCE || height <= 914 + TOLERANCE && width >= 914 + TOLERANCE) {
+                  const shortSide = Math.min(width, height);
+                  const longSide = Math.max(width, height);
+                  linearMeters = Math.max(width, height) / 1000;
+                  chosenRollSize = findClosestRollSize(mainrolls, shortSide);
+                  metrics.wideFormatPages++;
+                  totalPDFMetrics.wideFormatPages++;
+                } else {
+                  const shortSide = Math.min(width, height);
+                  const longSide = Math.max(width, height);
+                  // Check if the larger side is greater than the largest roll
+                  if (longSide > rolls[rolls.length - 1].size) {
+                    linearMeters = longSide / 1000;
+                    chosenRollSize = rolls[rolls.length - 1].size;
+                    metrics.wideFormatPages++;
+                    totalPDFMetrics.wideFormatPages++;
+                  } else {
+                    const closestRollforShortSide = findClosestRollSize(rolls, shortSide);
+                    const closestRollforLongSide = findClosestRollSize(rolls, longSide);
+                    const costShortSideAsLinearMeter = (shortSide / 1000) * rolls.find(roll => roll.size === closestRollforLongSide).price;
+                    const costLongSideAsLinearMeter = (longSide / 1000) * rolls.find(roll => roll.size === closestRollforShortSide).price;
+                    if (costShortSideAsLinearMeter <= costLongSideAsLinearMeter) {
+                      linearMeters = shortSide / 1000;
+                      chosenRollSize = closestRollforLongSide;
+                    } else {
+                      linearMeters = longSide / 1000;
+                      chosenRollSize = closestRollforShortSide;
+                    }
+                    metrics.wideFormatPages++;
+                    totalPDFMetrics.wideFormatPages++;
+                  }
+                }
+                const result = {
+                  linearMeters,
+                  rollSize: chosenRollSize,
+                  A4: localA4,
+                  A4Color: localA4Color,
+                  A4BW: localA4BW,
+                  A3: localA3,
+                  A3Color: localA3Color,
+                  A3BW: localA3BW
+                };
+                totalLinearMeters += linearMeters;
+                // Accumulate linear meters for each roll
+                if (result.rollSize) {
+                  rollLinearMeters[result.rollSize] = (rollLinearMeters[result.rollSize] || 0) + linearMeters;
+                }
+                return {
+                  linearMeters,
+                  result,
+                  rollSize: chosenRollSize
+                };
+              }
+              for (let i = 1; i <= totalPages; i++) {
+                const result = await processPage(i);
+                totalLinearMeters += result.linearMeters;
+                if (!chosenRollSize || result.rollSize + TOLERANCE > chosenRollSize) {
+                  chosenRollSize = result.rollSize;
+                }
+              }
+              // Update the metrics for the chosenRollSize
+              metrics[chosenRollSize] += totalLinearMeters;
+              // Update total PDF metrics based on accumulated linear meters for each roll
+              for (const rollSize in rollLinearMeters) {
+                totalPDFMetrics[rollSize] += rollLinearMeters[rollSize];
+              }
+              // Add A4 and A3 metrics to totalPDFMetrics
+              totalPDFMetrics.A4 += localA4;
+              totalPDFMetrics.A4ColorPages += localA4Color;
+              totalPDFMetrics.A4BlackAndWhitePages += localA4BW;
+              totalPDFMetrics.A3 += localA3;
+              totalPDFMetrics.A3ColorPages += localA3Color;
+              totalPDFMetrics.A3BlackAndWhitePages += localA3BW;
+              resolve({
+                linearMeters: totalLinearMeters,
+                rollSize: chosenRollSize,
+                pages: pagesResults,
+                rollLinearMeters: rollLinearMeters
+              });
+              // Clean up resources
+              pdf.destroy();
+              arrayBuffer = null;
+              pdfData = null;
+            } catch (error) {
+              reject(error);
+            }
+          };
+          reader.readAsArrayBuffer(pdfFile);
+        });
+      }
+    </script>
+</body>
+
+</html>
