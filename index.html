@@ -314,11 +314,11 @@
       async function processPDF(pdfFile, outputElement, metrics, totalPDFMetrics) {
         // Check if the file is a PDF
         if (pdfFile.type !== 'application/pdf') {
-          outputElement.innerHTML += `<br>
+          outputElement.innerHTML += `
     <b>${pdfFile.name}:</b>
     <br>
     Not processed; the file is not a PDF.
-    <br>`;
+    <br><br><hr><br>`;
           return;
         }
         try {
