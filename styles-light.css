@@ -63,7 +63,7 @@ input[type="file"]::-webkit-file-upload-button:hover {
 }
 .result-section p {
     font-weight: bold;
-    font-size: 23px;
+    font-size: 22px;
     color: #333;
 }
 .calculate-button {
