@@ -52,7 +52,7 @@
     <div class="credits">
       <p> Made with ❤️ by Martin Kirekchiev </p>
       <hr>
-      <p> Last Updated: 10 Febryary 2024 <br> PDF.js Version: 4.0.379 </p>
+      <p> Last Updated: 12 Febryary 2024 <br> PDF.js Version: 4.0.379 </p>
     </div>
     <div id="log-window">
       <div id="logContent"> </div>
@@ -418,7 +418,7 @@
           size: 914,
           price: 3.40
         }];
-        const TOLERANCE = 5; // TOLERANCE IN MILLIMETERS
+        const TOLERANCE = 10; // TOLERANCE IN MILLIMETERS
         // Helper function to find the closest, smallest roll that fits with tolerance
         function findClosestRollSize(rollsArray, sideArray) {
           const validRolls = rollsArray.filter(roll => roll.size + TOLERANCE >= sideArray);
