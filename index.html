@@ -4,11 +4,11 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <script type="module" src="pdf.mjs">
+  <script type="module" src="pdf.min.mjs">
   </script>
   <script type="module">
-    import * as pdfjsLib from './pdf.mjs';
-    pdfjsLib.GlobalWorkerOptions.workerSrc = new URL('./pdf.worker.mjs', import.meta.url);
+    import * as pdfjsLib from './pdf.min.mjs';
+    pdfjsLib.GlobalWorkerOptions.workerSrc = new URL('./pdf.worker.min.mjs', import.meta.url);
   </script>
   <title> PDF Linear Meters Calculator </title>
   <link rel="icon" href="icon.svg" type="image/svg+xml">
@@ -52,7 +52,7 @@
     <div class="credits">
       <p> Made with ❤️ by Martin Kirekchiev </p>
       <hr>
-      <p> Last Updated: 12 Febryary 2024 <br> PDF.js Version: 4.0.379 </p>
+      <p> Last Updated: 13 Febryary 2024 <br> PDF.js Version: 4.0.379 </p>
     </div>
     <div id="log-window">
       <div id="logContent"> </div>
