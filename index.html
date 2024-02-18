@@ -366,6 +366,12 @@
 <hr>
 <br>`;
         } catch (error) {
+          // Handle errors
+          outputElement.innerHTML += `
+            <b>${pdfFile.name}:</b>
+            <br>
+            Error processing; ${error.message}
+            <br><br><hr><br>`;
           console.error(`Error processing ${pdfFile.name}:`, error);
           alert(`Error processing ${pdfFile.name}. Please check the console for details.`);
         }
