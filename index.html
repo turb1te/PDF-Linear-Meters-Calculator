@@ -98,6 +98,7 @@
       const progressBar = document.getElementById('progressBar');
       const resultDiv = document.getElementById('result');
       const logWindow = document.getElementById('log-window');
+      const advancedReportButton = document.getElementById('advanced-report');
       fileInputOption.addEventListener('change', handleFileInputOptionChange);
       fileInput.addEventListener('change', handleFileInputChange);
       // Initial setup
@@ -256,6 +257,9 @@
         console.time('calculateLinearMeters');
         const calculateButton = document.getElementById('calculateButton');
         calculateButton.disabled = true;
+        fileInput.disabled = true;
+        document.getElementById('fileInputOption').disabled = true;
+        advancedReportButton.disabled = true;
         logWindow.style.display = 'none';
         logContent.textContent = '';
         resultDiv.textContent = '—';
@@ -266,6 +270,9 @@
           logWindow.style.display = 'none';
           progressBar.style.width = '0%';
           calculateButton.disabled = false;
+          fileInput.disabled = false;
+          document.getElementById('fileInputOption').disabled = false;
+          advancedReportButton.disabled = false;
           return;
         }
         const totalFiles = files.length;
@@ -313,6 +320,9 @@
         <br>
     `;
         calculateButton.disabled = false;
+        fileInput.disabled = false;
+        document.getElementById('fileInputOption').disabled = false;
+        advancedReportButton.disabled = false;
         console.timeEnd('calculateLinearMeters');
       }
       // Separate counters for A3 and A4 for each file
@@ -343,7 +353,10 @@
           localA4BW = 0;
           localA3BW = 0;
           const result = await calculateLinearMetersFromPDF(pdfFile);
-          const { totalPDFArea, totalSolidArea } = await calculateSolidArea(pdfFile);
+          const {
+            totalPDFArea,
+            totalSolidArea
+          } = await calculateSolidArea(pdfFile);
           // Display original size of all pages
           outputElement.innerHTML += `<b>${pdfFile.name}:</b>
 <br>`;
@@ -352,7 +365,6 @@
           for (let i = 0; i < result.pages.length; i++) {
             const pageResult = result.pages[i];
             outputElement.innerHTML += `&nbsp;&nbsp;&nbsp;<br>&nbsp;&nbsp;&nbsp;${pageResult.linearMeters.toFixed(2)} meters (${pageResult.rollSize} roll)`;
-            
             // Update total PDF metrics based on accumulated counts for A4 and A3
             totalPDFMetrics.A4 += localA4;
             totalPDFMetrics.A4ColorPages += localA4Color;
@@ -372,7 +384,7 @@
             outputElement.innerHTML += `&nbsp;&nbsp;&nbsp;—<br>${result.rollLinearMeters[rollSize].toFixed(2)} meters (${rollSize} roll)
 <br>`;
           }
-          outputElement.innerHTML += `${totalSolidArea.toFixed(2)} mm² — Total Solid Area<br>`;
+          outputElement.innerHTML += `${totalSolidArea.toFixed(2)} m² — Total Solid Area<br>`;
           outputElement.innerHTML += `${totalPDFArea.toFixed(2)} m² — Total Area<br>`;
           outputElement.innerHTML += `&nbsp;&nbsp;&nbsp;—<br>&nbsp;&nbsp;&nbsp;A4 – ${localA4} pages
 <br>&nbsp;&nbsp;&nbsp;A4 Color – ${localA4Color} pages<br>&nbsp;&nbsp;&nbsp;A4 BW – ${localA4BW} pages<br>&nbsp;&nbsp;&nbsp;—<br>
@@ -585,100 +597,86 @@
         });
       }
       async function calculateSolidArea(pdfFile) {
-    let arrayBuffer = await pdfFile.arrayBuffer();
-    let pdfData = new Uint8Array(arrayBuffer);
-    const pdf = await pdfjsLib.getDocument({ data: pdfData }).promise;
-
-    let totalSolidArea = 0;
-    let totalArea = 0;
-
-    // Show filename in log
-    console.log('-----------------------------------------');
-    console.log(pdfFile.name);
-
-    for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber++) {
-        const page = await pdf.getPage(pageNumber);
-        const canvas = document.createElement('canvas');
-        const context = canvas.getContext('2d');
-        const viewport = page.getViewport({ scale: 1 });
-        canvas.width = viewport.width;
-        canvas.height = viewport.height;
-        const widthInMeters = (viewport.width * 0.352778) * 0.001;
-        const heightInMeters = (viewport.height * 0.352778) * 0.001;
-        const widthInMillimeters = viewport.width * 0.352778;
-        const heightInMillimeters = viewport.height * 0.352778;
-
-        const TOLERANCE = 10; // TOLERANCE IN MILLIMETERS
-
-        // Skip A4 and A3 pages
-        if ((widthInMillimeters <= 420 + TOLERANCE && heightInMillimeters <= 297 + TOLERANCE) ||
-            (widthInMillimeters <= 297 + TOLERANCE && heightInMillimeters <= 420 + TOLERANCE)) {
+        let arrayBuffer = await pdfFile.arrayBuffer();
+        let pdfData = new Uint8Array(arrayBuffer);
+        const pdf = await pdfjsLib.getDocument({
+          data: pdfData
+        }).promise;
+        let totalSolidArea = 0;
+        let totalArea = 0;
+        // Show filename in log
+        console.log('-----------------------------------------');
+        console.log(pdfFile.name);
+        for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber++) {
+          const page = await pdf.getPage(pageNumber);
+          const canvas = document.createElement('canvas');
+          const context = canvas.getContext('2d');
+          const viewport = page.getViewport({
+            scale: 1
+          });
+          canvas.width = viewport.width;
+          canvas.height = viewport.height;
+          const widthInMeters = (viewport.width * 0.352778) * 0.001;
+          const heightInMeters = (viewport.height * 0.352778) * 0.001;
+          const widthInMillimeters = viewport.width * 0.352778;
+          const heightInMillimeters = viewport.height * 0.352778;
+          const TOLERANCE = 10; // TOLERANCE IN MILLIMETERS
+          // Skip A4 and A3 pages
+          if ((widthInMillimeters <= 420 + TOLERANCE && heightInMillimeters <= 297 + TOLERANCE) || (widthInMillimeters <= 297 + TOLERANCE && heightInMillimeters <= 420 + TOLERANCE)) {
             console.log(`${pdfFile.name} - Page ${pageNumber} - Skipped (A4 or A3 size)`);
             continue;
-        }
-
-        const renderContext = {
+          }
+          const renderContext = {
             canvasContext: context,
             viewport: viewport,
-        };
-
-        await page.render(renderContext).promise;
-        const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
-        const { data } = imageData;
-        const totalPixels = canvas.width * canvas.height;
-
-        let solidAreaCount = 0;
-
-        for (let i = 0; i < data.length; i += 4) {
+          };
+          await page.render(renderContext).promise;
+          const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+          const {
+            data
+          } = imageData;
+          const totalPixels = canvas.width * canvas.height;
+          let solidAreaCount = 0;
+          for (let i = 0; i < data.length; i += 4) {
             if (data[i] < 255 || data[i + 1] < 255 || data[i + 2] < 255) {
-                solidAreaCount++;
+              solidAreaCount++;
             }
-        }
-
-        // Calculate the original percentageSolidArea
-        const originalPercentageSolidArea = (solidAreaCount / totalPixels) * 100;
-
-        // Check if the original percentage is 15 or less
-        let adjustedPercentageSolidArea;
-        if (originalPercentageSolidArea <= 15) {
+          }
+          // Calculate the original percentageSolidArea
+          const originalPercentageSolidArea = (solidAreaCount / totalPixels) * 100;
+          // Check if the original percentage is 15 or less
+          let adjustedPercentageSolidArea;
+          if (originalPercentageSolidArea <= 15) {
             adjustedPercentageSolidArea = 0;
-        } else {
+          } else {
             // If it's more than 15%, subtract 15%
             adjustedPercentageSolidArea = originalPercentageSolidArea - 15;
+          }
+          console.log(`Page ${pageNumber} - Original Solid Area Percentage: ${originalPercentageSolidArea.toFixed(0)}%`);
+          console.log(`Page ${pageNumber} - Adjusted Solid Area Percentage: ${adjustedPercentageSolidArea.toFixed(0)}%`);
+          // Use the adjusted percentage when calculating totalSolidAreaForPage
+          const adjustedTotalSolidAreaForPage = (adjustedPercentageSolidArea / 100) * (widthInMeters * heightInMeters);
+          console.log(`Page ${pageNumber} - Adjusted Total Solid Area: ${adjustedTotalSolidAreaForPage.toFixed(2)} m²`);
+          const totalAreaForPage = widthInMeters * heightInMeters;
+          console.log(`Page ${pageNumber} - Total Area: ${totalAreaForPage.toFixed(2)} m²`);
+          // Accumulate the solid area for each page
+          totalSolidArea += adjustedTotalSolidAreaForPage;
+          totalArea += totalAreaForPage;
         }
-
-        console.log(`Page ${pageNumber} - Original Solid Area Percentage: ${originalPercentageSolidArea.toFixed(0)}%`);
-        console.log(`Page ${pageNumber} - Adjusted Solid Area Percentage: ${adjustedPercentageSolidArea.toFixed(0)}%`);
-
-        // Use the adjusted percentage when calculating totalSolidAreaForPage
-        const adjustedTotalSolidAreaForPage = (adjustedPercentageSolidArea / 100) * (widthInMeters * heightInMeters);
-        console.log(`Page ${pageNumber} - Adjusted Total Solid Area: ${adjustedTotalSolidAreaForPage.toFixed(2)} m²`);
-
-        const totalAreaForPage = widthInMeters * heightInMeters;
-        console.log(`Page ${pageNumber} - Total Area: ${totalAreaForPage.toFixed(2)} m²`);
-
-        // Accumulate the solid area for each page
-        totalSolidArea += adjustedTotalSolidAreaForPage;
-        totalArea += totalAreaForPage;
-        
-    }
-
-    // Add the total solid area of all pages to the global variable
-    totalSolidAreaforAllFiles += totalSolidArea;
-
-    // Add the total area of all pages to the global variable
-    totalAreaforAllFiles += totalArea;
-
-    // Clean up resources
-    pdf.destroy();
-    arrayBuffer = null;
-    pdfData = null;
-
-    // Return the totalSolidArea for all pages
-    return { totalPDFArea: totalArea, totalSolidArea: totalSolidArea };
-}
-
-
+        // Add the total solid area of all pages to the global variable
+        totalSolidAreaforAllFiles += totalSolidArea;
+        // Add the total area of all pages to the global variable
+        totalAreaforAllFiles += totalArea;
+        // Clean up resources
+        pdf.destroy();
+        arrayBuffer = null;
+        pdfData = null;
+        // Return the totalSolidArea for all pages
+        return {
+          totalPDFArea: totalArea,
+          totalSolidArea: totalSolidArea
+        };
+      }
     </script>
 </body>
 
