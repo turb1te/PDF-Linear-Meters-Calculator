@@ -643,77 +643,38 @@
             data[i + 1] = grayscale;
             data[i + 2] = grayscale;
           }
-          // Apply Otsu's method for thresholding
-          const histogram = new Array(256).fill(0);
+          let solidAreaCount = 0;
           for (let i = 0; i < data.length; i += 4) {
-            histogram[data[i]]++;
-          }
-          let sum = 0;
-          for (let i = 0; i < 256; ++i) {
-            sum += i * histogram[i];
-          }
-          let sumB = 0;
-          let wB = 0;
-          let wF = 0;
-          let maxVariance = 0;
-          let threshold = 0;
-          let totalSolidPixels = 0;
-          for (let i = 0; i < 256; ++i) {
-            wB += histogram[i];
-            if (wB === 0) continue;
-            wF = totalPixels - wB;
-            if (wF === 0) break;
-            sumB += i * histogram[i];
-            let mB = sumB / wB;
-            let mF = (sum - sumB) / wF;
-            let varianceBetween = wB * wF * (mB - mF) * (mB - mF);
-            if (varianceBetween > maxVariance) {
-              maxVariance = varianceBetween;
-              threshold = i;
+            if (data[i] < 255 || data[i + 1] < 255 || data[i + 2] < 255) {
+              solidAreaCount++;
             }
           }
-          // Decrease the threshold to bias towards more black pixels
-          threshold += 35; // Adjust this value to control the bias
-          // Threshold the image using Otsu's threshold
-          for (let i = 0; i < data.length; i += 4) {
-            let value = data[i];
-            if (value > threshold) {
-              data[i] = 255;
-              data[i + 1] = 255;
-              data[i + 2] = 255;
-            } else {
-              data[i] = 0;
-              data[i + 1] = 0;
-              data[i + 2] = 0;
-              totalSolidPixels++;
-            }
-          }
-          // Create a new canvas element to hold the thresholded image
-          const otsuCanvas = document.createElement('canvas');
-          otsuCanvas.width = canvas.width;
-          otsuCanvas.height = canvas.height;
-          const otsuContext = otsuCanvas.getContext('2d');
-          otsuContext.putImageData(imageData, 0, 0);
-          // Convert the canvas image to a data URL
-          const dataURL = otsuCanvas.toDataURL('image/jpeg');
-          // Create a download link
-          const downloadLink = document.createElement('a');
-          downloadLink.href = dataURL;
-          downloadLink.download = `Page_${pageNumber}_Thresholded_Image.jpg`;
-          downloadLink.textContent = `Download Thresholded Image for Page ${pageNumber} (${pdfFile.name})`;
-          // Append the download link to the document body with a line break
-          const br = document.createElement('br');
-          document.body.appendChild(downloadLink);
-          document.body.appendChild(br);
+          // // Create a new canvas element to hold the thresholded image
+          // const otsuCanvas = document.createElement('canvas');
+          // otsuCanvas.width = canvas.width;
+          // otsuCanvas.height = canvas.height;
+          // const otsuContext = otsuCanvas.getContext('2d');
+          // otsuContext.putImageData(imageData, 0, 0);
+          // // Convert the canvas image to a data URL
+          // const dataURL = otsuCanvas.toDataURL('image/jpeg');
+          // // Create a download link
+          // const downloadLink = document.createElement('a');
+          // downloadLink.href = dataURL;
+          // downloadLink.download = `Page_${pageNumber}_Thresholded_Image.jpg`;
+          // downloadLink.textContent = `Download Thresholded Image for Page ${pageNumber} (${pdfFile.name})`;
+          // // Append the download link to the document body with a line break
+          // const br = document.createElement('br');
+          // document.body.appendChild(downloadLink);
+          // document.body.appendChild(br);
           // Calculate the original percentageSolidArea
-          const originalPercentageSolidArea = (totalSolidPixels / totalPixels) * 100;
+          const originalPercentageSolidArea = (solidAreaCount / totalPixels) * 100;
           // Check if the original percentage is 15 or less
           let adjustedPercentageSolidArea;
           if (originalPercentageSolidArea <= 15) {
             adjustedPercentageSolidArea = 0;
           } else {
-            // If it's more than 15%, subtract 5%
-            adjustedPercentageSolidArea = originalPercentageSolidArea - 5;
+            // If it's more than 15%, subtract 15%
+            adjustedPercentageSolidArea = originalPercentageSolidArea - 15;
           }
           console.log(`Page ${pageNumber} - Original Solid Area Percentage: ${originalPercentageSolidArea.toFixed(0)}%`);
           console.log(`Page ${pageNumber} - Adjusted Solid Area Percentage: ${adjustedPercentageSolidArea.toFixed(0)}%`);
