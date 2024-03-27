@@ -38,6 +38,35 @@
         <option value="light"> Light </option>
         <option value="dark"> Dark </option>
       </select>
+      <hr>
+      <label for="basePercentageDropdown" style="margin-bottom: 10px;"> Base Percentage: </label>
+      <select id="basePercentageDropdown" style="width: 100%; margin-bottom: 10px;">
+        <option value="0">0%</option>
+        <option value="5">5%</option>
+        <option value="10">10%</option>
+        <option value="15">15%</option>
+        <option value="20">20%</option>
+        <option value="25">25%</option>
+        <option value="30">30%</option>
+        <option value="35">35%</option>
+        <option value="40">40%</option>
+        <option value="45">45%</option>
+        <option value="50">50%</option>
+      </select>
+      <label for="deductedPercentageDropdown" style="margin-bottom: 10px;"> Deducted Percentage: </label>
+      <select id="deductedPercentageDropdown" style="width: 100%; margin-bottom: 10px;">
+        <option value="0">0%</option>
+        <option value="5">5%</option>
+        <option value="10">10%</option>
+        <option value="15">15%</option>
+        <option value="20">20%</option>
+        <option value="25">25%</option>
+        <option value="30">30%</option>
+        <option value="35">35%</option>
+        <option value="40">40%</option>
+        <option value="45">45%</option>
+        <option value="50">50%</option>
+      </select>
       <button type="button" id="reset-to-defaults-button" onclick="resetToDefaults()" style="width: 100%; margin-top: 10px;"> Reset to Defaults </button>
     </div>
     <div class="result-section">
@@ -135,11 +164,25 @@
     </script>
     <script>
       let themeMode = 'light';
+      let basePercentage = 15;
+      let deductedPercentage = 5;
       let totalSolidAreaforAllFiles = 0;
       let totalAreaforAllFiles = 0;
       const logContent = document.getElementById('logContent');
       resultDiv.textContent = '—';
       progressBar.style.width = '0%';
+      const basePercentageDropdown = document.getElementById('basePercentageDropdown');
+      const deductedPercentageDropdown = document.getElementById('deductedPercentageDropdown');
+      const handleBasePercentageChange = () => {
+        basePercentage = parseFloat(basePercentageDropdown.value);
+        settingsChangeHandler();
+      };
+      const handleDeductedPercentageChange = () => {
+        deductedPercentage = parseFloat(deductedPercentageDropdown.value);
+        settingsChangeHandler();
+      };
+      basePercentageDropdown.addEventListener('change', handleBasePercentageChange);
+      deductedPercentageDropdown.addEventListener('change', handleDeductedPercentageChange);
       const toggleLogWindow = () => {
         if (logWindow.style.display === 'none') {
           logWindow.style.display = 'block';
@@ -197,6 +240,8 @@
       const saveSettings = () => {
         const settings = {
           themeMode: themeMode,
+          basePercentage: basePercentage,
+          deductedPercentage: deductedPercentage
         };
         localStorage.setItem('linearMetersCalculatorSettings', JSON.stringify(settings));
       };
@@ -205,10 +250,14 @@
         if (storedSettings) {
           const settings = JSON.parse(storedSettings);
           themeMode = settings.themeMode || themeMode;
+          basePercentage = settings.basePercentage || basePercentage;
+          deductedPercentage = settings.deductedPercentage || deductedPercentage;
         }
       };
       const applySettingsToUI = () => {
         document.getElementById('thememodeDropdown').value = themeMode;
+        document.getElementById('basePercentageDropdown').value = basePercentage;
+        document.getElementById('deductedPercentageDropdown').value = deductedPercentage;
         document.documentElement.setAttribute('data-theme', themeMode);
         setTheme(themeMode);
       };
@@ -224,6 +273,8 @@
       }
       const resetToDefaults = () => {
         themeMode = 'light';
+        basePercentage = 15;
+        deductedPercentage = 5;
         saveSettings();
         applySettingsToUI();
       };
@@ -668,13 +719,17 @@
           document.body.appendChild(br);
           // Calculate the original percentageSolidArea
           const originalPercentageSolidArea = (totalSolidPixels / totalPixels) * 100;
-          // Check if the original percentage is 15 or less
+          // Check if the original percentage is basePercetage or less
           let adjustedPercentageSolidArea;
-          if (originalPercentageSolidArea <= 15) {
+          if (originalPercentageSolidArea <= basePercentage) {
             adjustedPercentageSolidArea = 0;
           } else {
-            // If it's more than 15%, subtract 5%
-            adjustedPercentageSolidArea = originalPercentageSolidArea - 5;
+            // If it's more than basePercentage, subtract deductedPercentage
+            if (deductedPercentage > originalPercentageSolidArea) {
+              adjustedPercentageSolidArea = 0;
+            } else {
+              adjustedPercentageSolidArea = originalPercentageSolidArea - deductedPercentage;
+            }
           }
           console.log(`Page ${pageNumber} - Original Solid Area Percentage: ${originalPercentageSolidArea.toFixed(0)}%`);
           console.log(`Page ${pageNumber} - Adjusted Solid Area Percentage: ${adjustedPercentageSolidArea.toFixed(0)}%`);
